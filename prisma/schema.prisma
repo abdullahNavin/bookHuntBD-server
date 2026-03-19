@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Better Auth managed tables ─────────────────────────────────────
+// These are created/managed by Better Auth. We define them here so
+// Prisma knows about them and we can add relations.
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+  wishlists     Wishlist[]
+  alerts        PriceAlert[]
+}
+
+model Session {
+  id            String   @id
+  expiresAt     DateTime
+  token         String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  ipAddress     String?
+  userAgent     String?
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String   @id
+  accountId         String
+  providerId        String
+  userId            String
+  accessToken       String?
+  refreshToken      String?
+  idToken           String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope             String?
+  password          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+}
+
+// ─── Application tables ─────────────────────────────────────────────
+
+model BookCache {
+  id        String   @id @default(uuid())
+  query     String
+  site      String
+  title     String
+  author    String?
+  publisher String?
+  price     Float
+  oldPrice  Float?
+  discount  Float?
+  image     String?
+  link      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([query, site])
+  @@index([expiresAt])
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  link      String
+  image     String?
+  price     Float?
+  site      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PriceAlert {
+  id          String    @id @default(uuid())
+  userId      String
+  title       String
+  targetPrice Float
+  link        String
+  site        String
+  notifiedAt  DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isActive, notifiedAt])
+  @@index([userId])
+}

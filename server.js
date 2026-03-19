@@ -4,6 +4,8 @@ const { scrapeBookShoper } = require('./scrapers/bookShoper.js');
 const scrapeDheeBooks = require('./scrapers/dheebook.js');
 const scrapeBoiBazar = require('./scrapers/boibazar.js');
 const scrapeHarekRokom = require('./scrapers/harekrokom.js');
+const scrapeEboighar = require('./scrapers/eboighar.js');
+const scrapeBaatighar = require('./scrapers/baatighar.js');
 
 const app = express();
 app.use(cors());
@@ -15,10 +17,12 @@ app.get("/api/search", async (req, res) => {
 
   try {
     const results = await Promise.all([
-      scrapeBookShoper(query),
-      scrapeDheeBooks(query),
-      scrapeBoiBazar(query),
-      scrapeHarekRokom(query),
+      // scrapeBookShoper(query),
+      // scrapeDheeBooks(query),
+      // scrapeBoiBazar(query),
+      // scrapeHarekRokom(query),
+      // scrapeEboighar(query),
+      scrapeBaatighar(query),
       // add more scrapers later
     ]);
 
