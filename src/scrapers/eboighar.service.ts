@@ -5,6 +5,7 @@ import {
     MAX_RESULTS_PER_SCRAPER,
     parsePrice,
     jitter,
+    withTimeout,
 } from "./base.scraper.js";
 
 interface EboigharProductJson {
@@ -57,35 +58,39 @@ export class EboigharScraper implements Scraper {
             });
         });
 
-        // Enrich with product page data
-        const enriched = await Promise.allSettled(
-            items.map(async (item) => {
-                if (!item.link) return item;
+        // Enrich with product page data — batched, capped
+        const enrichItem = async (item: Partial<BookResult>): Promise<Partial<BookResult>> => {
+            if (!item.link) return item;
 
-                try {
-                    const res = await fetch(item.link, {
-                        headers: { "User-Agent": USER_AGENT },
-                    });
-                    const productHtml = await res.text();
-                    const $$ = cheerio.load(productHtml);
+            const res = await fetch(item.link, {
+                headers: { "User-Agent": USER_AGENT },
+            });
+            const productHtml = await res.text();
+            const $$ = cheerio.load(productHtml);
 
-                    const jsonScript = $$("#page_json").html();
-                    if (jsonScript) {
-                        const parsed: EboigharProductJson[] = JSON.parse(jsonScript);
-                        const work = parsed[0]?.workExample?.[0];
-                        if (work) {
-                            item.publisher = work.publisher?.name || undefined;
-                            const offerPrice = work.potentialAction?.expectsAcceptanceOf?.Price;
-                            if (offerPrice) item.price = offerPrice;
-                        }
-                    }
-
-                    return item;
-                } catch {
-                    return item;
+            const jsonScript = $$("#page_json").html();
+            if (jsonScript) {
+                const parsed: EboigharProductJson[] = JSON.parse(jsonScript);
+                const work = parsed[0]?.workExample?.[0];
+                if (work) {
+                    item.publisher = work.publisher?.name || undefined;
+                    const offerPrice = work.potentialAction?.expectsAcceptanceOf?.Price;
+                    if (offerPrice) item.price = offerPrice;
                 }
-            })
-        );
+            }
+
+            return item;
+        };
+
+        const enriched: PromiseSettledResult<Partial<BookResult>>[] = [];
+        const batchSize = 3;
+        for (let i = 0; i < items.length; i += batchSize) {
+            const batch = items.slice(i, i + batchSize);
+            const results = await Promise.allSettled(
+                batch.map((item) => withTimeout(enrichItem(item), 3000))
+            );
+            enriched.push(...results);
+        }
 
         return enriched
             .filter(

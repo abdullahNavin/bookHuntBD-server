@@ -85,52 +85,55 @@ export class BookShoperScraper implements Scraper {
 
         const books: BookResult[] = [];
 
-        $(".book-card, .card").each((_, el) => {
+        $(".book-card").each((_, el) => {
             if (books.length >= MAX_RESULTS_PER_SCRAPER) return false;
 
-            // ✅ Title
             const title =
-                $(el).find("h3 b").first().text().trim() || "Unknown";
+                $(el).find("b.book_name").text().trim() ||
+                $(el).find("h3 b").first().text().trim() ||
+                "Unknown";
 
-            // ✅ Author
             const author =
-                $(el).find(".font-color-auther").text().trim() || undefined;
+                $(el).find(".text-success").text().trim() ||
+                $(el).find(".font-color-auther").text().trim() ||
+                undefined;
 
-            // ✅ Publisher
             const publisher =
-                $(el).find(".text-primary").text().trim() || undefined;
+                $(el).find(".text-secondary small").text().trim() ||
+                $(el).find(".text-primary").text().trim() ||
+                undefined;
 
-            // ✅ Image
             const image =
                 $(el).find("img").attr("src") || undefined;
 
-            // ✅ Link (if available)
             const link =
-                $(el).find("a.a").attr("href") || "";
+                $(el).find("a.a").attr("href") ||
+                $(el).find("a").first().attr("href") ||
+                "";
 
-            // ✅ PRICE FIX (IMPORTANT 🔥)
-            const priceContainer = $(el)
-                .find("h3")
-                .filter((_, el) => $(el).find("del").length > 0);
+            let price = 0;
+            let oldPrice: number | undefined;
 
-            const priceRaw = priceContainer.find("b").text().trim();
-            const oldPriceRaw = priceContainer.find("del").text().trim();
+            const priceSpan = $(el).find("span").filter((_, s) => $(s).find("del").length > 0);
+            if (priceSpan.length > 0) {
+                const priceText = priceSpan.find("b").first().text().replace(/[^\d.]/g, "");
+                const oldPriceText = priceSpan.find("del").first().text().replace(/[^\d.]/g, "");
+                price = priceText ? parseFloat(priceText) : 0;
+                oldPrice = oldPriceText ? parseFloat(oldPriceText) : undefined;
+            }
 
-            // Clean numbers properly (keep decimal)
-            const priceText = priceRaw.replace(/[^\d.]/g, "");
-            const oldPriceText = oldPriceRaw.replace(/[^\d.]/g, "");
+            if (price === 0) {
+                const priceContainer = $(el)
+                    .find("h3")
+                    .filter((_, el) => $(el).find("del").length > 0);
+                const priceText = priceContainer.find("b").text().replace(/[^\d.]/g, "");
+                const oldPriceText = priceContainer.find("del").text().replace(/[^\d.]/g, "");
+                price = priceText ? parseFloat(priceText) : 0;
+                oldPrice = oldPriceText ? parseFloat(oldPriceText) : undefined;
+            }
 
-            const price = priceText ? parseFloat(priceText) : 0;
-            const oldPrice = oldPriceText
-                ? parseFloat(oldPriceText)
-                : undefined;
+            const discount = oldPrice ? calcDiscount(oldPrice, price) : undefined;
 
-            const discount = oldPrice
-                ? calcDiscount(oldPrice, price)
-                : undefined;
-
-            // ❌ Skip invalid entries
-            console.log(title, price);
             if (!title || price === 0) return;
 
             books.push({
@@ -145,7 +148,6 @@ export class BookShoperScraper implements Scraper {
                 site: this.site,
             });
         });
-        console.log(books);
         return books;
     }
 }

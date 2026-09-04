@@ -31,7 +31,7 @@ export function startAlertWorker() {
                     // Find the right scraper for this alert's site
                     const scraper = scrapers.find((s) => s.site === alert.site);
                     if (!scraper) {
-                        console.warn(`No scraper found for site: ${alert.site}`);
+                        console.log(`No scraper found for site: ${alert.site}`);
                         continue;
                     }
 

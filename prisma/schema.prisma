@@ -90,6 +90,7 @@ model Wishlist {
   id        String   @id @default(uuid())
   userId    String
   title     String
+  author    String?
   link      String
   image     String?
   price     Float?

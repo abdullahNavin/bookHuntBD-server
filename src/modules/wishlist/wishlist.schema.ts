@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const addWishlistSchema = z.object({
     title: z.string().min(1),
+    author: z.string().optional(),
     link: z.string().url(),
     image: z.string().optional(),
     price: z.number().optional(),

@@ -6,6 +6,7 @@ import {
     parsePrice,
     calcDiscount,
     jitter,
+    withTimeout,
 } from "./base.scraper.js";
 
 export class HarekRokomScraper implements Scraper {
@@ -63,50 +64,54 @@ export class HarekRokomScraper implements Scraper {
             });
         });
 
-        // Enrich with product page details (oldPrice, discount)
-        const enriched = await Promise.allSettled(
-            items.map(async (item) => {
-                if (!item.link || item.link === "https://harekrokom.com") return item;
+        // Enrich with product page details (oldPrice, discount) — batched, capped
+        const enrichItem = async (item: BookResult): Promise<BookResult> => {
+            if (!item.link || item.link === "https://harekrokom.com") return item;
 
-                try {
-                    const res = await fetch(item.link, {
-                        headers: { "User-Agent": USER_AGENT },
-                    });
-                    const productHtml = await res.text();
-                    const $$ = cheerio.load(productHtml);
+            const res = await fetch(item.link, {
+                headers: { "User-Agent": USER_AGENT },
+            });
+            const productHtml = await res.text();
+            const $$ = cheerio.load(productHtml);
 
-                    const newPriceText = $$(".pro-details-price .new-price")
-                        .first()
-                        .text()
-                        .trim();
-                    const oldPriceText = $$(".pro-details-price .old-price")
-                        .first()
-                        .text()
-                        .trim();
-                    const offerText = $$(".pro-details-price .offer-price")
-                        .first()
-                        .text()
-                        .trim();
+            const newPriceText = $$(".pro-details-price .new-price")
+                .first()
+                .text()
+                .trim();
+            const oldPriceText = $$(".pro-details-price .old-price")
+                .first()
+                .text()
+                .trim();
+            const offerText = $$(".pro-details-price .offer-price")
+                .first()
+                .text()
+                .trim();
 
-                    const newPrice = parsePrice(newPriceText);
-                    const oldPrice = parsePrice(oldPriceText);
+            const newPrice = parsePrice(newPriceText);
+            const oldPrice = parsePrice(oldPriceText);
 
-                    if (newPrice > 0) item.price = newPrice;
-                    if (oldPrice > 0) item.oldPrice = oldPrice;
+            if (newPrice > 0) item.price = newPrice;
+            if (oldPrice > 0) item.oldPrice = oldPrice;
 
-                    if (offerText) {
-                        const m = offerText.match(/(\d{1,3})/);
-                        if (m) item.discount = parseInt(m[1], 10);
-                    } else if (oldPrice > 0 && newPrice > 0) {
-                        item.discount = calcDiscount(oldPrice, newPrice);
-                    }
+            if (offerText) {
+                const m = offerText.match(/(\d{1,3})/);
+                if (m) item.discount = parseInt(m[1], 10);
+            } else if (oldPrice > 0 && newPrice > 0) {
+                item.discount = calcDiscount(oldPrice, newPrice);
+            }
 
-                    return item;
-                } catch {
-                    return item;
-                }
-            })
-        );
+            return item;
+        };
+
+        const enriched: PromiseSettledResult<BookResult>[] = [];
+        const batchSize = 3;
+        for (let i = 0; i < items.length; i += batchSize) {
+            const batch = items.slice(i, i + batchSize);
+            const results = await Promise.allSettled(
+                batch.map((item) => withTimeout(enrichItem(item), 3000))
+            );
+            enriched.push(...results);
+        }
 
         return enriched
             .filter(

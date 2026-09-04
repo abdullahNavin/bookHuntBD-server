@@ -114,13 +114,31 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
     };
 }
 
+type SortOption = "price_asc" | "price_desc" | "discount_desc" | "site_asc";
+
 function applySearchOptions(
     results: BookResult[],
     site?: string,
-    sort: "price_asc" | "price_desc" = "price_asc"
+    sort: SortOption = "price_asc"
 ) {
-    const filtered = site ? results.filter((book) => book.site === site) : results;
-    return [...filtered].sort((a, b) =>
-        sort === "price_desc" ? b.price - a.price : a.price - b.price
-    );
+    const sites = site
+        ? site.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+        : undefined;
+
+    const filtered = sites
+        ? results.filter((book) => sites.includes(book.site))
+        : results;
+
+    return [...filtered].sort((a, b) => {
+        switch (sort) {
+            case "price_desc":
+                return b.price - a.price;
+            case "discount_desc":
+                return (b.discount ?? 0) - (a.discount ?? 0);
+            case "site_asc":
+                return a.site.localeCompare(b.site);
+            default:
+                return a.price - b.price;
+        }
+    });
 }

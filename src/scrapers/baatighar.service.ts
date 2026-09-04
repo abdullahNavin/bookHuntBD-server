@@ -28,7 +28,7 @@ export class BaatigharScraper implements Scraper {
         const payload = {
             jsonrpc: "2.0",
             method: "call",
-            params: { term: query, max_nb_chars: 84 },
+            params: { term: query, max_nb_chars: 84, options: {} },
             id: 12,
         };
 
@@ -60,8 +60,12 @@ export class BaatigharScraper implements Scraper {
 
             const discount = oldPrice ? calcDiscount(oldPrice, price) : undefined;
 
+            // Strip HTML tags from title (name field contains <span> elements)
+            const title$ = cheerio.load(item.name || "");
+            const cleanTitle = title$.text().trim() || "Unknown";
+
             return {
-                title: item.name || "Unknown",
+                title: cleanTitle,
                 author: item.author_names || undefined,
                 publisher: item.publisher_names || undefined,
                 price,

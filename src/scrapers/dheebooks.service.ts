@@ -28,6 +28,8 @@ export class DheeBooksScraper implements Scraper {
             headers: {
                 "User-Agent": USER_AGENT,
                 Accept: "application/json",
+                Origin: "https://dheebooks.com",
+                Referer: "https://dheebooks.com/",
             },
         });
         const data = await response.json();
@@ -44,7 +46,9 @@ export class DheeBooksScraper implements Scraper {
                 publisher: book.publication || undefined,
                 discount: book.retailDiscount || undefined,
                 price: book.price || 0,
-                link: `https://www.dheebooks.com/book-details/${book.bookId}/${book.englishTitle}`,
+                link: book.bookId
+                    ? `https://www.dheebooks.com/book-details/${book.bookId}/${book.englishTitle ?? ""}`
+                    : "",
                 image: book.coverImageUrl || undefined,
                 site: this.site,
             }));

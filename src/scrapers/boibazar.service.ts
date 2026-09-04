@@ -51,7 +51,9 @@ export class BoiBazarScraper implements Scraper {
                     image: book.image
                         ? `https://www.boibazar.com${book.image}`
                         : undefined,
-                    link: `https://www.boibazar.com/${book.click_url}/${book.seo_url}`,
+                    link: book.click_url && book.seo_url
+                        ? `https://www.boibazar.com/${book.click_url}/${book.seo_url}`
+                        : "",
                     site: this.site,
                 };
             });
