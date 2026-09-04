@@ -16,7 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^7.5.0",
+    "@prisma/client": "^6.19.2",
     "better-auth": "^1.2.8",
     "bullmq": "^5.40.0",
     "cheerio": "^1.1.2",
@@ -32,7 +32,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.0",
-    "prisma": "^6.5.0",
+    "prisma": "^6.19.2",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

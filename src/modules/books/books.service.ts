@@ -9,10 +9,13 @@ interface SearchResponse {
     failed: string[];
     page: number;
     total: number;
+    query: string;
+    limit: number;
+    totalPages: number;
 }
 
 export async function searchBooks(params: SearchQuery): Promise<SearchResponse> {
-    const { query, page, limit } = params;
+    const { query, page, limit, site, sort } = params;
     const normalizedQuery = query.toLowerCase().trim();
 
     // Step 1: Check cache
@@ -25,11 +28,8 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
 
     if (cachedResults.length > 0) {
         // Return paginated cache results
-        const total = cachedResults.length;
-        const start = (page - 1) * limit;
-        const paginatedResults: BookResult[] = cachedResults
-            .slice(start, start + limit)
-            .map((r) => ({
+        const filteredResults = applySearchOptions(
+            cachedResults.map((r) => ({
                 title: r.title,
                 author: r.author ?? undefined,
                 publisher: r.publisher ?? undefined,
@@ -39,7 +39,13 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
                 image: r.image ?? undefined,
                 link: r.link,
                 site: r.site,
-            }));
+            })),
+            site,
+            sort
+        );
+        const total = filteredResults.length;
+        const start = (page - 1) * limit;
+        const paginatedResults = filteredResults.slice(start, start + limit);
 
         return {
             results: paginatedResults,
@@ -47,6 +53,9 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
             failed: [],
             page,
             total,
+            query: normalizedQuery,
+            limit,
+            totalPages: Math.ceil(total / limit),
         };
     }
 
@@ -88,9 +97,10 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
     }
 
     // Step 4: Return paginated results
-    const total = results.length;
+    const filteredResults = applySearchOptions(results, site, sort);
+    const total = filteredResults.length;
     const start = (page - 1) * limit;
-    const paginatedResults = results.slice(start, start + limit);
+    const paginatedResults = filteredResults.slice(start, start + limit);
 
     return {
         results: paginatedResults,
@@ -98,5 +108,19 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
         failed,
         page,
         total,
+        query: normalizedQuery,
+        limit,
+        totalPages: Math.ceil(total / limit),
     };
+}
+
+function applySearchOptions(
+    results: BookResult[],
+    site?: string,
+    sort: "price_asc" | "price_desc" = "price_asc"
+) {
+    const filtered = site ? results.filter((book) => book.site === site) : results;
+    return [...filtered].sort((a, b) =>
+        sort === "price_desc" ? b.price - a.price : a.price - b.price
+    );
 }

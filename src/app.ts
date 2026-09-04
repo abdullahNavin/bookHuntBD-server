@@ -13,7 +13,7 @@ import { alertsRouter } from "./modules/alerts/alerts.controller.js";
 
 const app = express();
 
-// ─── Security ───────────────────────────────────────────────────────
+// --- Security -------------------------------------------------------
 app.use(helmet());
 app.use(
     cors({
@@ -21,19 +21,20 @@ app.use(
         credentials: true,
     })
 );
-app.use(express.json());
 
-// ─── Better Auth handler (must be before other routes) ──────────────
+// --- Better Auth handler (must be before body parsing) --------------
 // Better Auth handles /api/auth/* routes internally
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
-// ─── API Routes ─────────────────────────────────────────────────────
+app.use(express.json());
+
+// --- API Routes -----------------------------------------------------
 app.use("/api/books", booksRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/wishlist", wishlistRouter);
 app.use("/api/alerts", alertsRouter);
 
-// ─── Health check ───────────────────────────────────────────────────
+// --- Health check ---------------------------------------------------
 app.get("/", (_req, res) => {
     res.json({
         status: "ok",
@@ -42,7 +43,7 @@ app.get("/", (_req, res) => {
     });
 });
 
-// ─── Global error handler ───────────────────────────────────────────
+// --- Global error handler -------------------------------------------
 app.use(
     (
         err: Error,

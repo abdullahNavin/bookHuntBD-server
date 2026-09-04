@@ -14,10 +14,20 @@ export function validate(schemas: ValidateOptions) {
                 req.body = schemas.body.parse(req.body);
             }
             if (schemas.query) {
-                req.query = schemas.query.parse(req.query) as any;
+                Object.defineProperty(req, 'query', {
+                    value: schemas.query.parse(req.query),
+                    writable: true,
+                    enumerable: true,
+                    configurable: true
+                });
             }
             if (schemas.params) {
-                req.params = schemas.params.parse(req.params) as any;
+                Object.defineProperty(req, 'params', {
+                    value: schemas.params.parse(req.params),
+                    writable: true,
+                    enumerable: true,
+                    configurable: true
+                });
             }
             next();
         } catch (error) {
