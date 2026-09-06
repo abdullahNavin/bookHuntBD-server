@@ -5,6 +5,9 @@ import { BoiBazarScraper } from "./boibazar.service.js";
 import { HarekRokomScraper } from "./harekrokom.service.js";
 import { EboigharScraper } from "./eboighar.service.js";
 import { BaatigharScraper } from "./baatighar.service.js";
+import { RokomariScraper } from "./rokomari.service.js";
+import { WafilifeScraper } from "./wafilife.service.js";
+import { ProthomaScraper } from "./prothoma.service.js";
 
 export const scrapers: Scraper[] = [
     new BookShoperScraper(),
@@ -13,6 +16,9 @@ export const scrapers: Scraper[] = [
     new HarekRokomScraper(),
     new EboigharScraper(),
     new BaatigharScraper(),
+    new RokomariScraper(),
+    new WafilifeScraper(),
+    new ProthomaScraper(),
 ];
 
 export type { Scraper, BookResult } from "./base.scraper.js";
