@@ -1,12 +1,14 @@
 import * as cheerio from "cheerio";
 import type { Scraper, BookResult } from "./base.scraper.js";
 import {
-    USER_AGENT,
     MAX_RESULTS_PER_SCRAPER,
     parsePrice,
     calcDiscount,
     jitter,
 } from "./base.scraper.js";
+
+const ROKOMARI_UA =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
 export class RokomariScraper implements Scraper {
     readonly site = "rokomari";
@@ -14,54 +16,67 @@ export class RokomariScraper implements Scraper {
     async search(query: string): Promise<BookResult[]> {
         await jitter();
 
-        const searchUrl = `https://www.rokomari.com/search?term=${encodeURIComponent(query)}&search_type=BOOK`;
+        const searchUrl = `https://www.rokomari.com/search?term=${encodeURIComponent(query)}&search_type=ALL`;
 
         const response = await fetch(searchUrl, {
-            headers: { "User-Agent": USER_AGENT },
+            headers: {
+                "User-Agent": ROKOMARI_UA,
+                Accept:
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "bn-BD,bn;q=0.9,en-US;q=0.8,en;q=0.7",
+            },
         });
+
+        if (!response.ok) {
+            console.error(
+                `[rokomari] HTTP ${response.status} for query "${query}"`
+            );
+            return [];
+        }
 
         const html = await response.text();
         const $ = cheerio.load(html);
 
         const books: BookResult[] = [];
 
-        $(".books-wrapper__item").each((_, el) => {
+        $("[class*='productGridItem']").each((_, el) => {
             if (books.length >= MAX_RESULTS_PER_SCRAPER) return false;
 
-            const wrapper = $(el).find(".product-card-wrapper");
-
             const title =
-                $(el).find(".book-title").text().trim() || "Unknown";
+                $(el).find("[class*='productTitle']").text().trim() || "Unknown";
 
             const author =
-                $(el).find(".book-author").text().trim() || undefined;
+                $(el).find("[class*='productAuthor']").text().trim() || undefined;
 
             const image =
-                $(el).find("div.book-img img").attr("data-src") || undefined;
+                $(el).find("[class*='bookImage'] img").attr("data-src") ||
+                $(el).find("[class*='bookImage'] img").attr("src") ||
+                undefined;
 
-            const link =
-                $(el).find("a").first().attr("href") || "";
-            const fullLink = link.startsWith("http")
-                ? link
-                : `https://www.rokomari.com${link}`;
+            const linkHref = $(el).find("a").first().attr("href") || "";
+            const fullLink = linkHref.startsWith("http")
+                ? linkHref
+                : `https://www.rokomari.com${linkHref}`;
 
             let price = 0;
             let oldPrice: number | undefined;
 
-            const oldPriceText = $(el).find(".book-price strike.original-price").text().trim();
+            const pricePart = $(el).find("[class*='productPricePart']");
+            const oldPriceText = pricePart.find("del").text().trim();
             if (oldPriceText) {
                 oldPrice = parsePrice(oldPriceText);
             }
 
-            const priceContainer = $(el).find(".book-price");
-            priceContainer.find("strike").remove();
-            const currentPriceText = priceContainer.text().trim();
+            const currentPriceText = pricePart
+                .find("[class*='productPrice']")
+                .text()
+                .trim();
             if (currentPriceText) {
                 price = parsePrice(currentPriceText);
             }
 
             const discountText = $(el)
-                .find(".discount-badge-common p")
+                .find("[class*='commonBadages'] span")
                 .text()
                 .trim();
             const discountNum = parseInt(discountText, 10);
@@ -72,7 +87,7 @@ export class RokomariScraper implements Scraper {
                         ? calcDiscount(oldPrice, price)
                         : undefined;
 
-            if (!title || price === 0) return;
+            if (!title || title === "Unknown" || price === 0) return;
 
             books.push({
                 title,

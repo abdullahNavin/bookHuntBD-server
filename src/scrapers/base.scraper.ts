@@ -10,6 +10,7 @@ export interface BookResult {
     image?: string;
     link: string;
     site: string;
+    affiliateLink?: string;
 }
 
 export interface Scraper {

@@ -25,9 +25,10 @@ interface WafilifeProduct {
 }
 
 interface WafilifeApiResponse {
-    results: WafilifeProduct[];
-    total?: number;
+    items: WafilifeProduct[];
 }
+
+const WAFILIFE_BID = "6ffa78b0-87fa-42ba-9980-1f38243cafdd";
 
 export class WafilifeScraper implements Scraper {
     readonly site = "wafilife";
@@ -35,43 +36,63 @@ export class WafilifeScraper implements Scraper {
     async search(query: string): Promise<BookResult[]> {
         await jitter();
 
-        const searchUrl = `https://www.wafilife.com/api/mobile/solr/products`;
+        const params = new URLSearchParams({
+            keyword: query.trim(),
+            bid: WAFILIFE_BID,
+            seq: "1",
+        });
+        const searchUrl = `https://www.wafilife.com/api/search?${params.toString()}`;
 
         const response = await fetch(searchUrl, {
-            method: "POST",
+            method: "GET",
             headers: {
                 "User-Agent": USER_AGENT,
-                "Content-Type": "application/json",
                 Accept: "application/json",
+                Referer: "https://www.wafilife.com/",
             },
-            body: JSON.stringify({
-                query,
-                category: "",
-                sort: "custom_score desc",
-                excludeBundle: true,
-                pageSize: MAX_RESULTS_PER_SCRAPER,
-            }),
         });
 
-        if (!response.ok) return [];
+        if (!response.ok) {
+            console.error(
+                `[wafilife] HTTP ${response.status} for query "${query}"`
+            );
+            return [];
+        }
 
-        const data = await response.json();
-        const products: WafilifeProduct[] = data.results || data.products || (Array.isArray(data) ? data : []);
+        let data: WafilifeApiResponse;
+        try {
+            data = (await response.json()) as WafilifeApiResponse;
+        } catch {
+            console.error(`[wafilife] Invalid JSON response for query "${query}"`);
+            return [];
+        }
+
+        const products = data.items;
+
+        if (!Array.isArray(products) || products.length === 0) {
+            return [];
+        }
 
         return products.slice(0, MAX_RESULTS_PER_SCRAPER).map((book) => {
             const salePrice = book.sale_price?.[0] || book.price;
-            const price = typeof salePrice === "number" ? salePrice : book.price || 0;
-            const oldPrice = book.price && book.price > price ? book.price : undefined;
+            const price =
+                typeof salePrice === "number" ? salePrice : book.price || 0;
+            const oldPrice =
+                book.price && book.price > price ? book.price : undefined;
             const discount = book.discount
                 ? Math.round(book.discount)
                 : oldPrice
                     ? calcDiscount(oldPrice, price)
                     : undefined;
 
-            const imageUrl = book.image?.thumbnail || book.image?.original || undefined;
-            const link = book.slug
-                ? `https://www.wafilife.com/${book.slug}/pd/${book.PID || book.id}`
-                : "";
+            const imageUrl =
+                book.image?.thumbnail || book.image?.original || undefined;
+
+            let link = "";
+            if (book.slug) {
+                const decodedSlug = decodeURIComponent(book.slug);
+                link = `https://www.wafilife.com/${decodedSlug}/pd/${book.id || book.PID}`;
+            }
 
             return {
                 title: book.name || "Unknown",

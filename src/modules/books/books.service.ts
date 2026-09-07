@@ -3,6 +3,8 @@ import { scrapers, withTimeout } from "../../scrapers/index.js";
 import type { BookResult } from "../../scrapers/index.js";
 import type { SearchQuery } from "./books.schema.js";
 
+const AFFILIATE_PARAMS = "affId=44ARrOo1928OIAR&affs=30062&cma=604800";
+
 interface SearchResponse {
     results: BookResult[];
     cached: boolean;
@@ -12,6 +14,15 @@ interface SearchResponse {
     query: string;
     limit: number;
     totalPages: number;
+}
+
+function addAffiliateLinks(results: BookResult[]): BookResult[] {
+    return results.map((book) => {
+        if (book.site === "rokomari" && !book.affiliateLink) {
+            return { ...book, affiliateLink: `${book.link}?${AFFILIATE_PARAMS}` };
+        }
+        return book;
+    });
 }
 
 export async function searchBooks(params: SearchQuery): Promise<SearchResponse> {
@@ -27,22 +38,19 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
     });
 
     if (cachedResults.length > 0) {
-        // Return paginated cache results
-        const filteredResults = applySearchOptions(
-            cachedResults.map((r) => ({
-                title: r.title,
-                author: r.author ?? undefined,
-                publisher: r.publisher ?? undefined,
-                price: r.price,
-                oldPrice: r.oldPrice ?? undefined,
-                discount: r.discount ?? undefined,
-                image: r.image ?? undefined,
-                link: r.link,
-                site: r.site,
-            })),
-            site,
-            sort
-        );
+        const mapped = cachedResults.map((r) => ({
+            title: r.title,
+            author: r.author ?? undefined,
+            publisher: r.publisher ?? undefined,
+            price: r.price,
+            oldPrice: r.oldPrice ?? undefined,
+            discount: r.discount ?? undefined,
+            image: r.image ?? undefined,
+            link: r.link,
+            site: r.site,
+        }));
+        const withAffiliate = addAffiliateLinks(mapped);
+        const filteredResults = applySearchOptions(withAffiliate, site, sort);
         const total = filteredResults.length;
         const start = (page - 1) * limit;
         const paginatedResults = filteredResults.slice(start, start + limit);
@@ -97,7 +105,8 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
     }
 
     // Step 4: Return paginated results
-    const filteredResults = applySearchOptions(results, site, sort);
+    const withAffiliate = addAffiliateLinks(results);
+    const filteredResults = applySearchOptions(withAffiliate, site, sort);
     const total = filteredResults.length;
     const start = (page - 1) * limit;
     const paginatedResults = filteredResults.slice(start, start + limit);
