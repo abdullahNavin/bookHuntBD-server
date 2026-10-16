@@ -55,7 +55,7 @@ export const USER_AGENT =
 
 // ─── Result cap ─────────────────────────────────────────────────────
 
-export const MAX_RESULTS_PER_SCRAPER = 10;
+export const MAX_RESULTS_PER_SCRAPER = 5;
 
 // ─── Price parser helper ────────────────────────────────────────────
 
