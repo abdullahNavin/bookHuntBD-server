@@ -58,7 +58,7 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
         return {
             results: paginatedResults,
             cached: true,
-            failed: [],
+            failed: cachedResults[0]?.failedSites ?? [],
             page,
             total,
             query: normalizedQuery,
@@ -87,6 +87,13 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
     if (results.length > 0) {
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
+        await prisma.bookCache.deleteMany({
+            where: {
+                query: normalizedQuery,
+                expiresAt: { lte: new Date() },
+            },
+        });
+
         await prisma.bookCache.createMany({
             data: results.map((r) => ({
                 query: normalizedQuery,
@@ -99,8 +106,10 @@ export async function searchBooks(params: SearchQuery): Promise<SearchResponse> 
                 discount: r.discount,
                 image: r.image,
                 link: r.link,
+                failedSites: failed,
                 expiresAt,
             })),
+            skipDuplicates: true,
         });
     }
 

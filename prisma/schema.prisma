@@ -1,11 +1,11 @@
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "library"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── Better Auth managed tables ─────────────────────────────────────
@@ -68,20 +68,22 @@ model Verification {
 // ─── Application tables ─────────────────────────────────────────────
 
 model BookCache {
-  id        String   @id @default(uuid())
-  query     String
-  site      String
-  title     String
-  author    String?
-  publisher String?
-  price     Float
-  oldPrice  Float?
-  discount  Float?
-  image     String?
-  link      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  query      String
+  site       String
+  title      String
+  author     String?
+  publisher  String?
+  price      Float
+  oldPrice   Float?
+  discount   Float?
+  image      String?
+  link       String
+  failedSites String[] @default([])
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
 
+  @@unique([query, site, link])
   @@index([query, site])
   @@index([expiresAt])
 }
